@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "lib": [
-      "webworker",
+      "dom",
+      "dom.iterable",
       "esnext"
     ]
   },

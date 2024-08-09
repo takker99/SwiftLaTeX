@@ -115,7 +115,9 @@ Module.onAbort = () => {
   return;
 };
 
-
+/**
+ * @return {CompileEvent}
+ */
 const compileLaTeXRoutine = () => {
   prepareExecutionContext();
   const setMainFunction = cwrap("setMainEntry", "number", ["string"]);
@@ -134,108 +136,108 @@ const compileLaTeXRoutine = () => {
     } catch (_) {
       console.error("Fetch content failed. " + pdfurl);
       status = -253;
-      self.postMessage({
-        "result": "failed",
-        "status": status,
-        "log": memlog,
-        "cmd": "compile",
-      });
-      return;
+      return {
+        result: "failed",
+        status,
+        log: memlog,
+        cmd: "compile",
+      };
     }
-    self.postMessage({
+    return {
       result: "ok",
       status,
       log: memlog,
       pdf: pdfArrayBuffer.buffer,
       cmd: "compile",
-    }, [pdfArrayBuffer.buffer]);
-  } else {
-    console.error("Compilation failed, with status code " + status);
-    self.postMessage({
-      result: "failed",
-      status,
-      log: memlog,
-      cmd: "compile",
-    });
+    };
   }
+  console.error(`Compilation failed, with status code ${status}`);
+  return {
+    result: "failed",
+    status,
+    log: memlog,
+    cmd: "compile",
+  };
 };
 
+/**
+ * @return {CompileEvent}
+ */
 const compileFormatRoutine = () => {
   prepareExecutionContext();
   let status = _compileFormat();
   if (status === 0) {
     let pdfArrayBuffer = null;
     try {
-      const pdfurl = WORKROOT + "/xelatex.fmt";
-      pdfArrayBuffer = FS.readFile(pdfurl, {
+      pdfArrayBuffer = FS.readFile(`${WORKROOT}/xelatex.fmt`, {
         encoding: "binary",
       });
     } catch (_) {
       console.error("Fetch content failed.");
       status = -253;
-      self.postMessage({
+      return {
         result: "failed",
         status,
         log: memlog,
         cmd: "compile",
-      });
-      return;
+      };
     }
-    self.postMessage({
+    return {
       result: "ok",
       status,
       log: memlog,
       pdf: pdfArrayBuffer.buffer,
       cmd: "compile",
-    }, [pdfArrayBuffer.buffer]);
-  } else {
-    console.error("Compilation format failed, with status code " + status);
-    self.postMessage({
-      result: "failed",
-      status,
-      log: memlog,
-      cmd: "compile",
-    });
+    };
   }
+  console.error(`Compilation format failed, with status code ${status}`);
+  return {
+    result: "failed",
+    status,
+    log: memlog,
+    cmd: "compile",
+  };
 };
 
 /**
  * @param {string} dirname
+ * @return {MkdirEvent}
  */
 const mkdirRoutine = (dirname) => {
   try {
     //console.log("removing " + item);
     FS.mkdir(WORKROOT + "/" + dirname);
-    self.postMessage({
-      "result": "ok",
-      "cmd": "mkdir",
-    });
+    return {
+      result: "ok",
+      cmd: "mkdir",
+    };
   } catch (_) {
     console.error("Not able to mkdir " + dirname);
-    self.postMessage({
-      "result": "failed",
-      "cmd": "mkdir",
-    });
+    return {
+      result: "failed",
+      cmd: "mkdir",
+    };
   }
 };
 
 /**
  * @param {string} filename
  * @param {string | ArrayBufferView} content
+ * @return {WriteFileEvent}
  */
 const writeFileRoutine = (filename, content) => {
   try {
     FS.writeFile(WORKROOT + "/" + filename, content);
-    self.postMessage({
-      "result": "ok",
-      "cmd": "writefile",
-    });
+    return {
+      result: "ok",
+      cmd: "writefile",
+    };
   } catch (_) {
     console.error("Unable to write mem file");
-    self.postMessage({
-      "result": "failed",
-      "cmd": "writefile",
-    });
+    return {
+      result: "failed",
+      cmd: "writefile",
+    };
   }
 };
 
@@ -253,26 +255,42 @@ const setTexliveEndpoint = (url) => {
 
 self.onmessage = (ev) => {
   const data = ev["data"];
+  /** @type {unknown} */
   const cmd = data["cmd"];
-  if (cmd === "compilelatex") {
-    compileLaTeXRoutine();
-  } else if (cmd === "compileformat") {
-    compileFormatRoutine();
-  } else if (cmd === "settexliveurl") {
-    setTexliveEndpoint(data["url"]);
-  } else if (cmd === "mkdir") {
-    mkdirRoutine(data["url"]);
-  } else if (cmd === "writefile") {
-    writeFileRoutine(data["url"], data["src"]);
-  } else if (cmd === "setmainfile") {
-    mainfile = data["url"];
-  } else if (cmd === "grace") {
-    console.error("Gracefully Close");
-    self.close();
-  } else if (cmd === "flushcache") {
-    cleanDir(WORKROOT);
-  } else {
-    console.error("Unknown command " + cmd);
+  switch (cmd) {
+    case "compilelatex":
+    case "compileformat": {
+      const event = cmd === "compilelatex"
+        ? compileLaTeXRoutine()
+        : compileFormatRoutine();
+      if (event.result === "ok") {
+        self.postMessage(event, [event.pdf]);
+      }
+      self.postMessage(event);
+      break;
+    }
+    case "settexliveurl":
+      setTexliveEndpoint(data["url"]);
+      break;
+    case "mkdir":
+      self.postMessage(mkdirRoutine(data["url"]));
+      break;
+    case "writefile":
+      self.postMessage(writeFileRoutine(data["url"], data["src"]));
+      break;
+    case "setmainfile":
+      mainfile = data["url"];
+      break;
+    case "grace":
+      console.error("Gracefully Close");
+      self.close();
+      break;
+    case "flushcache":
+      cleanDir(WORKROOT);
+      break;
+    default:
+      console.error("Unknown command " + cmd);
+      break;
   }
 };
 
