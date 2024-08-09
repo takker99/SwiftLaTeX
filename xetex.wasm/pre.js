@@ -1,365 +1,386 @@
+// @ts-check
+
 const TEXCACHEROOT = "/tex";
 const WORKROOT = "/work";
-var Module = {};
-self.memlog = "";
-self.initmem = undefined;
-self.mainfile = "main.tex";
-self.texlive_endpoint = "https://texlive2.swiftlatex.com/";
-Module['print'] = function(a) {
-    self.memlog += (a + "\n");
+let memlog = "";
+/** @type{Uint8Array|undefined} */
+let initmem;
+let mainfile = "main.tex";
+let texlive_endpoint = "https://texlive2.swiftlatex.com/";
+Module.print = (a) => {
+  memlog += a + "\n";
 };
 
-Module['printErr'] = function(a) {
-    self.memlog += (a + "\n");
-    console.log(a);
+Module.printErr = (a) => {
+  memlog += a + "\n";
+  console.log(a);
 };
 
-function _allocate(content) {
-    let res = _malloc(content.length);
-    HEAPU8.set(new Uint8Array(content), res);
-    return res; 
-}
-
-Module['preRun'] = function() {
-    FS.mkdir(TEXCACHEROOT);
-    FS.mkdir(WORKROOT);
+/**
+ * @param {ArrayLike<number>} content
+ * @return {number}
+ */
+const _allocate = (content) => {
+  const res = _malloc(content.length);
+  HEAPU8.set(new Uint8Array(content), res);
+  return res;
 };
 
-function dumpHeapMemory() {
-    var src = wasmMemory.buffer;
-    var dst = new Uint8Array(src.byteLength);
-    dst.set(new Uint8Array(src));
-    // console.log("Dumping " + src.byteLength);
-    return dst;
-}
+Module.preRun = [() => {
+  FS.mkdir(TEXCACHEROOT);
+  FS.mkdir(WORKROOT);
+}];
 
-function restoreHeapMemory() {
-    if (self.initmem) {
-        var dst = new Uint8Array(wasmMemory.buffer);
-        dst.set(self.initmem);
+const dumpHeapMemory = () => {
+  const src = wasmMemory.buffer;
+  const dst = new Uint8Array(src.byteLength);
+  dst.set(new Uint8Array(src));
+  // console.log("Dumping " + src.byteLength);
+  return dst;
+};
+
+const restoreHeapMemory = () => {
+  if (initmem) {
+    const dst = new Uint8Array(wasmMemory.buffer);
+    dst.set(initmem);
+  }
+};
+
+const closeFSStreams = () => {
+  for (const stream of FS.streams) {
+    if (!stream || (stream.fd ?? 0) <= 2) {
+      continue;
     }
-}
+    FS.close(stream);
+  }
+};
 
-function closeFSStreams() {
-    for (var i = 0; i < FS.streams.length; i++) {
-        var stream = FS.streams[i];
-        if (!stream || stream.fd <= 2) {
-            continue;
-        }
-        FS.close(stream);
+const prepareExecutionContext = () => {
+  memlog = "";
+  restoreHeapMemory();
+  closeFSStreams();
+  FS.chdir(WORKROOT);
+};
+
+Module.postRun = [() => {
+  self.postMessage({ result: "ok" });
+  initmem = dumpHeapMemory();
+}];
+
+/**
+ * @param {string} dir
+ */
+const cleanDir = (dir) => {
+  const l = FS.readdir(dir);
+  for (let item of l) {
+    if (item === "." || item === "..") {
+      continue;
     }
-}
+    item = dir + "/" + item;
+    let fsStat = undefined;
+    try {
+      fsStat = FS.stat(item);
+    } catch (_) {
+      console.error("Not able to fsstat " + item);
+      continue;
+    }
+    if (FS.isDir(fsStat.mode)) {
+      cleanDir(item);
+    } else {
+      try {
+        FS.unlink(item);
+      } catch (_) {
+        console.error("Not able to unlink " + item);
+      }
+    }
+  }
 
-function prepareExecutionContext() {
-    self.memlog = '';
-    restoreHeapMemory();
-    closeFSStreams();
-    FS.chdir(WORKROOT);
-}
+  if (dir !== WORKROOT) {
+    try {
+      FS.rmdir(dir);
+    } catch (_) {
+      console.error("Not able to top level " + dir);
+    }
+  }
+};
 
-Module['postRun'] = function() {
+Module.onAbort = () => {
+  memlog += "Engine crashed";
+  self.postMessage({
+    result: "failed",
+    status: -254,
+    log: memlog,
+    cmd: "compile",
+  });
+  return;
+};
+
+
+const compileLaTeXRoutine = () => {
+  prepareExecutionContext();
+  const setMainFunction = cwrap("setMainEntry", "number", ["string"]);
+  setMainFunction(mainfile);
+
+  let status = _compileLaTeX();
+  if (status === 0) {
+    let pdfArrayBuffer = null;
+    _compileBibtex();
+    const pdfurl = WORKROOT + "/" +
+      mainfile.substr(0, mainfile.length - 4) + ".xdv";
+    try {
+      pdfArrayBuffer = FS.readFile(pdfurl, {
+        encoding: "binary",
+      });
+    } catch (_) {
+      console.error("Fetch content failed. " + pdfurl);
+      status = -253;
+      self.postMessage({
+        "result": "failed",
+        "status": status,
+        "log": memlog,
+        "cmd": "compile",
+      });
+      return;
+    }
     self.postMessage({
-        'result': 'ok',
-    });
-    self.initmem = dumpHeapMemory();
-};
-
-function cleanDir(dir) {
-    let l = FS.readdir(dir);
-    for (let i in l) {
-        let item = l[i];
-        if (item === "." || item === "..") {
-            continue;
-        }
-        item = dir + "/" + item;
-        let fsStat = undefined;
-        try {
-            fsStat = FS.stat(item);
-        } catch (err) {
-            console.error("Not able to fsstat " + item);
-            continue;
-        }
-        if (FS.isDir(fsStat.mode)) {
-            cleanDir(item);
-        } else {
-            try {
-                FS.unlink(item);
-            } catch (err) {
-                console.error("Not able to unlink " + item);
-            }
-        }
-    }
-
-    if (dir !== WORKROOT) {
-        try {
-            FS.rmdir(dir);
-        } catch (err) {
-            console.error("Not able to top level " + dir);
-        }
-    }
-}
-
-
-
-Module['onAbort'] = function() {
-    self.memlog += 'Engine crashed';
+      result: "ok",
+      status,
+      log: memlog,
+      pdf: pdfArrayBuffer.buffer,
+      cmd: "compile",
+    }, [pdfArrayBuffer.buffer]);
+  } else {
+    console.error("Compilation failed, with status code " + status);
     self.postMessage({
-        'result': 'failed',
-        'status': -254,
-        'log': self.memlog,
-        'cmd': 'compile'
+      result: "failed",
+      status,
+      log: memlog,
+      cmd: "compile",
     });
-    return;
+  }
 };
 
-function compileLaTeXRoutine() {
-    prepareExecutionContext();
-    const setMainFunction = cwrap('setMainEntry', 'number', ['string']);
-    setMainFunction(self.mainfile);
-    
-    let status = _compileLaTeX();
-    if (status === 0) {
-        let pdfArrayBuffer = null;
-        _compileBibtex();
-        let pdfurl = WORKROOT + "/" + self.mainfile.substr(0, self.mainfile.length - 4) + ".xdv";
-        try {
-            pdfArrayBuffer = FS.readFile(pdfurl, {
-                encoding: 'binary'
-            });
-        } catch (err) {
-            console.error("Fetch content failed. " + pdfurl);
-            status = -253;
-            self.postMessage({
-                'result': 'failed',
-                'status': status,
-                'log': self.memlog,
-                'cmd': 'compile'
-            });
-            return;
-        }
-        self.postMessage({
-            'result': 'ok',
-            'status': status,
-            'log': self.memlog,
-            'pdf': pdfArrayBuffer.buffer,
-            'cmd': 'compile'
-        }, [pdfArrayBuffer.buffer]);
-    } else {
-        console.error("Compilation failed, with status code " + status);
-        self.postMessage({
-            'result': 'failed',
-            'status': status,
-            'log': self.memlog,
-            'cmd': 'compile'
-        });
-    }
-}
-
-function compileFormatRoutine() {
-    prepareExecutionContext();
-    let status = _compileFormat();
-    if (status === 0) {
-        let pdfArrayBuffer = null;
-        try {
-            let pdfurl = WORKROOT + "/xelatex.fmt";
-            pdfArrayBuffer = FS.readFile(pdfurl, {
-                encoding: 'binary'
-            });
-        } catch (err) {
-            console.error("Fetch content failed.");
-            status = -253;
-            self.postMessage({
-                'result': 'failed',
-                'status': status,
-                'log': self.memlog,
-                'cmd': 'compile'
-            });
-            return;
-        }
-        self.postMessage({
-            'result': 'ok',
-            'status': status,
-            'log': self.memlog,
-            'pdf': pdfArrayBuffer.buffer,
-            'cmd': 'compile'
-        }, [pdfArrayBuffer.buffer]);
-    } else {
-        console.error("Compilation format failed, with status code " + status);
-        self.postMessage({
-            'result': 'failed',
-            'status': status,
-            'log': self.memlog,
-            'cmd': 'compile'
-        });
-    }
-}
-
-function mkdirRoutine(dirname) {
+const compileFormatRoutine = () => {
+  prepareExecutionContext();
+  let status = _compileFormat();
+  if (status === 0) {
+    let pdfArrayBuffer = null;
     try {
-        //console.log("removing " + item);
-        FS.mkdir(WORKROOT + "/" + dirname);
-        self.postMessage({
-            'result': 'ok',
-            'cmd': 'mkdir'
-        });
-    } catch (err) {
-        console.error("Not able to mkdir " + dirname);
-        self.postMessage({
-            'result': 'failed',
-            'cmd': 'mkdir'
-        });
+      const pdfurl = WORKROOT + "/xelatex.fmt";
+      pdfArrayBuffer = FS.readFile(pdfurl, {
+        encoding: "binary",
+      });
+    } catch (_) {
+      console.error("Fetch content failed.");
+      status = -253;
+      self.postMessage({
+        result: "failed",
+        status,
+        log: memlog,
+        cmd: "compile",
+      });
+      return;
     }
-}
-
-function writeFileRoutine(filename, content) {
-    try {
-        FS.writeFile(WORKROOT + "/" + filename, content);
-        self.postMessage({
-            'result': 'ok',
-            'cmd': 'writefile'
-        });
-    } catch (err) {
-        console.error("Unable to write mem file");
-        self.postMessage({
-            'result': 'failed',
-            'cmd': 'writefile'
-        });
-    }
-}
-
-function setTexliveEndpoint(url) {
-    if(url) {
-        if (!url.endsWith("/")) {
-            url += '/';
-        }
-        self.texlive_endpoint = url;
-    }
-}
-
-self['onmessage'] = function(ev) {
-    let data = ev['data'];
-    let cmd = data['cmd'];
-    if (cmd === 'compilelatex') {
-    	compileLaTeXRoutine();
-    } else if (cmd === 'compileformat') {
-        compileFormatRoutine();
-    } else if (cmd === "settexliveurl") {
-        setTexliveEndpoint(data['url']);
-    } else if (cmd === "mkdir") {
-        mkdirRoutine(data['url']);
-    } else if (cmd === "writefile") {
-        writeFileRoutine(data['url'], data['src']);
-    } else if (cmd === "setmainfile") {
-        self.mainfile = data['url'];
-    } else if (cmd === "grace") {
-        console.error("Gracefully Close");
-        self.close();
-    } else if (cmd === "flushcache") {
-        cleanDir(WORKROOT);
-    } else {
-        console.error("Unknown command " + cmd);
-    }
+    self.postMessage({
+      result: "ok",
+      status,
+      log: memlog,
+      pdf: pdfArrayBuffer.buffer,
+      cmd: "compile",
+    }, [pdfArrayBuffer.buffer]);
+  } else {
+    console.error("Compilation format failed, with status code " + status);
+    self.postMessage({
+      result: "failed",
+      status,
+      log: memlog,
+      cmd: "compile",
+    });
+  }
 };
 
-let texlive404_cache = {};
-let texlive200_cache = {};
+/**
+ * @param {string} dirname
+ */
+const mkdirRoutine = (dirname) => {
+  try {
+    //console.log("removing " + item);
+    FS.mkdir(WORKROOT + "/" + dirname);
+    self.postMessage({
+      "result": "ok",
+      "cmd": "mkdir",
+    });
+  } catch (_) {
+    console.error("Not able to mkdir " + dirname);
+    self.postMessage({
+      "result": "failed",
+      "cmd": "mkdir",
+    });
+  }
+};
 
-function kpse_find_file_impl(nameptr, format, _mustexist) {
+/**
+ * @param {string} filename
+ * @param {string | ArrayBufferView} content
+ */
+const writeFileRoutine = (filename, content) => {
+  try {
+    FS.writeFile(WORKROOT + "/" + filename, content);
+    self.postMessage({
+      "result": "ok",
+      "cmd": "writefile",
+    });
+  } catch (_) {
+    console.error("Unable to write mem file");
+    self.postMessage({
+      "result": "failed",
+      "cmd": "writefile",
+    });
+  }
+};
 
-    const reqname = UTF8ToString(nameptr);
-
-    if (reqname.includes("/")) {
-        return 0;
+/**
+ * @param {string} url
+ */
+const setTexliveEndpoint = (url) => {
+  if (url) {
+    if (!url.endsWith("/")) {
+      url += "/";
     }
+    texlive_endpoint = url;
+  }
+};
 
-    const cacheKey = format + "/" + reqname ;
+self.onmessage = (ev) => {
+  const data = ev["data"];
+  const cmd = data["cmd"];
+  if (cmd === "compilelatex") {
+    compileLaTeXRoutine();
+  } else if (cmd === "compileformat") {
+    compileFormatRoutine();
+  } else if (cmd === "settexliveurl") {
+    setTexliveEndpoint(data["url"]);
+  } else if (cmd === "mkdir") {
+    mkdirRoutine(data["url"]);
+  } else if (cmd === "writefile") {
+    writeFileRoutine(data["url"], data["src"]);
+  } else if (cmd === "setmainfile") {
+    mainfile = data["url"];
+  } else if (cmd === "grace") {
+    console.error("Gracefully Close");
+    self.close();
+  } else if (cmd === "flushcache") {
+    cleanDir(WORKROOT);
+  } else {
+    console.error("Unknown command " + cmd);
+  }
+};
 
-    if (cacheKey in texlive404_cache) {
-        return 0;
-    }
+/** @type{Set<string>} */
+const texlive404_cache = new Set();
+/** @type{Map<string,string>} */
+const texlive200_cache = new Map();
 
-    if (cacheKey in texlive200_cache) {
-        const savepath = texlive200_cache[cacheKey];
-        return _allocate(intArrayFromString(savepath));
-    }
+/**
+ * @param {number} nameptr
+ * @param {string} format
+ * @param {any} _mustexist
+ */
+// deno-lint-ignore no-unused-vars
+const kpse_find_file_impl = (nameptr, format, _mustexist) => {
+  const reqname = UTF8ToString(nameptr);
 
-    
-    const remote_url = self.texlive_endpoint + 'xetex/' + cacheKey;
-    let xhr = new XMLHttpRequest();
-    xhr.open("GET", remote_url, false);
-    xhr.timeout = 150000;
-    xhr.responseType = "arraybuffer";
-    console.log("Start downloading texlive file " + remote_url);
-    try {
-        xhr.send();
-    } catch (err) {
-        console.log("TexLive Download Failed " + remote_url);
-        return 0;
-    }
+  if (reqname.includes("/")) return 0;
 
-    if (xhr.status === 200) {
-        let arraybuffer = xhr.response;
-        const fileid = xhr.getResponseHeader('fileid');
-        const savepath = TEXCACHEROOT + "/" + fileid;
-        FS.writeFile(savepath, new Uint8Array(arraybuffer));
-        texlive200_cache[cacheKey] = savepath;
-        return _allocate(intArrayFromString(savepath));
+  const cacheKey = `${format}/${reqname}`;
 
-    } else if (xhr.status === 301) {
-        console.log("TexLive File not exists " + remote_url);
-        texlive404_cache[cacheKey] = 1;
-        return 0;
-    } 
+  if (texlive404_cache.has(cacheKey)) return 0;
+
+  {
+    const savepath = texlive200_cache.get(cacheKey);
+    if (savepath) return _allocate(intArrayFromString(savepath));
+  }
+
+  const remote_url = `${texlive_endpoint}xetex/${cacheKey}`;
+  const xhr = new XMLHttpRequest();
+  xhr.open("GET", remote_url, false);
+  xhr.timeout = 150000;
+  xhr.responseType = "arraybuffer";
+  console.log(`Start downloading texlive file ${remote_url}`);
+  try {
+    xhr.send();
+  } catch (_) {
+    console.log(`TexLive Download Failed ${remote_url}`);
     return 0;
-}
+  }
 
-let font200_cache = {};
-let font404_cache = {};
-function fontconfig_search_font_impl(fontnamePtr, varStringPtr) {
-    const fontname = UTF8ToString(fontnamePtr);
-    let variant = UTF8ToString(varStringPtr);
-    if (!variant) {
-        variant = 'OT';
-    }
-    variant = variant.replace(/\//g, '_');
+  if (xhr.status === 200) {
+    const arraybuffer = xhr.response;
+    const fileid = xhr.getResponseHeader("fileid");
+    const savepath = TEXCACHEROOT + "/" + fileid;
+    FS.writeFile(savepath, new Uint8Array(arraybuffer));
+    texlive200_cache.set(cacheKey, savepath);
+    return _allocate(intArrayFromString(savepath));
+  } else if (xhr.status === 301) {
+    console.log(`TexLive File not exists ${remote_url}`);
+    texlive404_cache.add(cacheKey);
+  }
+  return 0;
+};
 
-    const cacheKey = variant + '/' + fontname;
-    
-    if (cacheKey in font200_cache) {
-        const savepath = font200_cache[cacheKey];
-        return _allocate(intArrayFromString(savepath));
-    }
-    
-    if (cacheKey in font404_cache) {
-        return 0;
-    }
+/** @type{Record<string,string>} */
+const font200_cache = {};
+/** @type{Record<string,number>} */
+const font404_cache = {};
+/**
+ * @param {number} fontnamePtr
+ * @param {number} varStringPtr
+ */
+// deno-lint-ignore no-unused-vars
+const fontconfig_search_font_impl = (fontnamePtr, varStringPtr) => {
+  const fontname = UTF8ToString(fontnamePtr);
+  let variant = UTF8ToString(varStringPtr);
+  if (!variant) {
+    variant = "OT";
+  }
+  variant = variant.replace(/\//g, "_");
 
-    const remote_url = self.texlive_endpoint + 'fontconfig/' + cacheKey;
-    let xhr = new XMLHttpRequest();
-    xhr.open("GET", remote_url, false);
-    xhr.timeout = 150000;
-    xhr.responseType = "arraybuffer";
-    console.log("Start downloading font file " + remote_url);
-    try {
-        xhr.send();
-    } catch (err) {
-        console.log("Font Download Failed " + remote_url);
-        return 0;
-    }
-    if (xhr.status === 200) {
-        let arraybuffer = xhr.response;
-        const fontID = xhr.getResponseHeader('fontid');
-        const savepath = TEXCACHEROOT + "/" + fontID;
+  const cacheKey = variant + "/" + fontname;
 
-        FS.writeFile(savepath, new Uint8Array(arraybuffer));
-        font200_cache[cacheKey] = savepath;
-        return _allocate(intArrayFromString(savepath));
+  if (cacheKey in font200_cache) {
+    const savepath = font200_cache[cacheKey];
+    return _allocate(intArrayFromString(savepath));
+  }
 
-    } else if (xhr.status === 301 || xhr.status === 404) {
-        console.log("Font File not exists " + remote_url);
-        font404_cache[cacheKey] = 1;
-        return 0;
-    }
-    
+  if (cacheKey in font404_cache) {
     return 0;
-}
+  }
+
+  const remote_url = texlive_endpoint + "fontconfig/" + cacheKey;
+  const xhr = new XMLHttpRequest();
+  xhr.open("GET", remote_url, false);
+  xhr.timeout = 150000;
+  xhr.responseType = "arraybuffer";
+  console.log("Start downloading font file " + remote_url);
+  try {
+    xhr.send();
+  } catch (_) {
+    console.log("Font Download Failed " + remote_url);
+    return 0;
+  }
+  if (xhr.status === 200) {
+    const arraybuffer = xhr.response;
+    const fontID = xhr.getResponseHeader("fontid");
+    const savepath = TEXCACHEROOT + "/" + fontID;
+
+    FS.writeFile(savepath, new Uint8Array(arraybuffer));
+    font200_cache[cacheKey] = savepath;
+    return _allocate(intArrayFromString(savepath));
+  } else if (xhr.status === 301 || xhr.status === 404) {
+    console.log("Font File not exists " + remote_url);
+    font404_cache[cacheKey] = 1;
+    return 0;
+  }
+
+  return 0;
+};

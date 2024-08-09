@@ -1,0 +1,18 @@
+{
+  "version": "3",
+  "packages": {
+    "specifiers": {
+      "npm:@types/emscripten@1": "npm:@types/emscripten@1.39.13"
+    },
+    "npm": {
+      "@types/emscripten@1.39.13": {
+        "integrity": "sha512-cFq+fO/isvhvmuP/+Sl4K4jtU6E23DoivtbO4r50e3odaxAiVdbfSYRDdJ4gCdxx+3aRjhphS5ZMwIH4hFy/Cw==",
+        "dependencies": {}
+      }
+    }
+  },
+  "redirects": {
+    "https://esm.sh/@types/emscripten@1.39.13": "https://esm.sh/v135/@types/emscripten@1.39.13/index.d.ts"
+  },
+  "remote": {}
+}

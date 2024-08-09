@@ -3,5 +3,6 @@
   "features": {
     "ghcr.io/ebaskoro/devcontainer-features/emscripten:1": {},
     "ghcr.io/devcontainers-community/features/deno:1": {}
-  }
+  },
+  "postCreateCommand": "echo 'source \"/usr/local/emsdk/emsdk_env.sh\"' >> $HOME/.bash_profile"
 }

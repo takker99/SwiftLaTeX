@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "webworker",
+      "esnext"
+    ]
+  },
+  "lint": {
+    "exclude": [
+      "./swiftlatexxetex.js"
+    ]
+  }
+}

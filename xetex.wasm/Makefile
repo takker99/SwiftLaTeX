@@ -4,16 +4,20 @@ CXX 			= 	em++
 DEBUGFLAGS 		= 	-O3
 
 CFLAGS 			= 	$(DEBUGFLAGS) -Wno-parentheses-equality -Wno-pointer-sign -DWEBASSEMBLY_BUILD \
-					-s USE_FREETYPE=1 -s USE_ICU=1 -s USE_LIBPNG=1 -fno-rtti -fno-exceptions
+					--use-port=freetype --use-port=icu --use-port=libpng -fno-rtti -fno-exceptions
 
 LDFLAGS 		= 	$(DEBUGFLAGS) --js-library library.js \
-					-s USE_FREETYPE=1 \
-					-s USE_ICU=1 \
-					-s USE_LIBPNG=1 \
+          --use-port=freetype \
+          --use-port=icu \
+          --use-port=libpng \
 					--pre-js pre.js \
-					-s ENVIRONMENT="web" \
-					-s EXPORTED_FUNCTIONS='["_compileBibtex", "_compileLaTeX", "_compileFormat", "_main", "_setMainEntry"]' -s NO_EXIT_RUNTIME=1 \
-					-s WASM=1 -s EXPORTED_RUNTIME_METHODS=["cwrap"] -s ALLOW_MEMORY_GROWTH=1
+					-sENVIRONMENT="web" \
+					-sMODULARIZE=1 \
+					-sEXPORT_ES6=1 \
+					-sWASM_BIGINT=1 \
+					-sEXPORTED_FUNCTIONS='["_compileBibtex", "_compileLaTeX", "_compileFormat", "_main", "_setMainEntry","_malloc"]' \
+					-sEXIT_RUNTIME=0 \
+					-sWASM=1 -sEXPORTED_RUNTIME_METHODS=["cwrap"] -sALLOW_MEMORY_GROWTH=1
 
 LINKFLAG 		= 	$(CXX) -o $@ $(LDFLAGS)
 
