@@ -1,5 +1,5 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "image": "mcr.microsoft.com/devcontainers/universal:linux",
   "features": {
     "ghcr.io/ebaskoro/devcontainer-features/emscripten:1": {},
     "ghcr.io/devcontainers-community/features/deno:1": {},
