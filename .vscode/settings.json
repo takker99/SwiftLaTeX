@@ -8,5 +8,4 @@
     "xetexcoerce.h": "c",
     "xetex.h": "c"
   },
-  "makefile.makefilePath": "${workspaceFolder}/xetex.wasm/Makefile"
 }
