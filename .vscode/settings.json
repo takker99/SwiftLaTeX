@@ -1,4 +1,12 @@
 {
   "cmake.ignoreCMakeListsMissing": true,
-  "deno.enable": true
+  "makefile.extensionOutputFolder": "${workspaceFolder}/.vscode/makefile-tools",
+  "deno.enable": true,
+  "files.associations": {
+    "*.yaml": "yaml",
+    "xetexd.h": "c",
+    "xetexcoerce.h": "c",
+    "xetex.h": "c"
+  },
+  "makefile.makefilePath": "${workspaceFolder}/xetex.wasm/Makefile"
 }

@@ -1,6 +1,8 @@
 *.o
+.vscode/makefile-tools/
 swiftlatexxetex.wasm
 swiftlatexxetex.js
+swiftlatexxetex.d.ts
 swiftlatexpdftex.wasm
 swiftlatexpdftex.js
 swiftlatexdvipdfm.js
