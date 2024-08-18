@@ -119,7 +119,7 @@ Module.compileLaTeX = async () => {
 
   /** @type{Promise<number>} */
   // @ts-ignore workaround for asyncify
-  const promise = ccall("compileLaTeX", "number", [], [],{ async: true });
+  const promise = ccall("compileLaTeX", "number", [], [], { async: true });
   let status = await promise;
   if (status === 0) {
     let pdfArrayBuffer = null;
@@ -276,8 +276,11 @@ const kpse_find_file_impl = (nameptr, format, _mustexist) => {
         const fileid = res.headers.get("fileid") ?? "";
         const savepath = `${TEXCACHEROOT}/${fileid}`;
         FS.writeFile(savepath, new Uint8Array(arraybuffer));
+        console.log(`Wrote data of ${remote_url}`);
         texlive200_cache.set(cacheKey, savepath);
-        return _allocate(intArrayFromString(savepath));
+        const charPtr = _allocate(intArrayFromString(savepath));
+        console.log(`Allocated filename at ${charPtr}`);
+        return charPtr;
       }
       console.log(`TexLive File not exists ${remote_url}`);
       texlive404_cache.add(cacheKey);

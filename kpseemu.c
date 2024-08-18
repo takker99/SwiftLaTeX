@@ -5,58 +5,103 @@
 #include <xetexd.h>
 #include <stdlib.h>
 #include <libgen.h>
-void setupboundvariable(integer *var, const_string var_name, integer dflt) {
+void setupboundvariable(integer *var, const_string var_name, integer dflt)
+{
 
   *var = dflt;
 
-  if (strcmp(var_name, "main_memory") == 0) {
+  if (strcmp(var_name, "main_memory") == 0)
+  {
     *var = 5000000;
-  } else if (strcmp(var_name, "extra_mem_top") == 0) {
+  }
+  else if (strcmp(var_name, "extra_mem_top") == 0)
+  {
     *var = 0;
-  } else if (strcmp(var_name, "extra_mem_bot") == 0) {
+  }
+  else if (strcmp(var_name, "extra_mem_bot") == 0)
+  {
     *var = 0;
-  } else if (strcmp(var_name, "pool_size") == 0) {
+  }
+  else if (strcmp(var_name, "pool_size") == 0)
+  {
     *var = 6250000;
-  } else if (strcmp(var_name, "string_vacancies") == 0) {
+  }
+  else if (strcmp(var_name, "string_vacancies") == 0)
+  {
     *var = 90000;
-  } else if (strcmp(var_name, "pool_free") == 0) {
+  }
+  else if (strcmp(var_name, "pool_free") == 0)
+  {
     *var = 47500;
-  } else if (strcmp(var_name, "max_strings") == 0) {
+  }
+  else if (strcmp(var_name, "max_strings") == 0)
+  {
     *var = 500000;
-  } else if (strcmp(var_name, "font_mem_size") == 0) {
+  }
+  else if (strcmp(var_name, "font_mem_size") == 0)
+  {
     *var = 8000000;
-  } else if (strcmp(var_name, "font_max") == 0) {
+  }
+  else if (strcmp(var_name, "font_max") == 0)
+  {
     *var = 9000;
-  } else if (strcmp(var_name, "trie_size") == 0) {
+  }
+  else if (strcmp(var_name, "trie_size") == 0)
+  {
     *var = 1000000;
-  } else if (strcmp(var_name, "hyph_size") == 0) {
+  }
+  else if (strcmp(var_name, "hyph_size") == 0)
+  {
     *var = 8191;
-  } else if (strcmp(var_name, "buf_size") == 0) {
+  }
+  else if (strcmp(var_name, "buf_size") == 0)
+  {
     *var = 200000;
-  } else if (strcmp(var_name, "nest_size") == 0) {
+  }
+  else if (strcmp(var_name, "nest_size") == 0)
+  {
     *var = 500;
-  } else if (strcmp(var_name, "max_in_open") == 0) {
+  }
+  else if (strcmp(var_name, "max_in_open") == 0)
+  {
     *var = 15;
-  } else if (strcmp(var_name, "param_size") == 0) {
+  }
+  else if (strcmp(var_name, "param_size") == 0)
+  {
     *var = 10000;
-  } else if (strcmp(var_name, "save_size") == 0) {
+  }
+  else if (strcmp(var_name, "save_size") == 0)
+  {
     *var = 100000;
-  } else if (strcmp(var_name, "stack_size") == 0) {
+  }
+  else if (strcmp(var_name, "stack_size") == 0)
+  {
     *var = 5000;
-  } else if (strcmp(var_name, "dvi_buf_size") == 0) {
+  }
+  else if (strcmp(var_name, "dvi_buf_size") == 0)
+  {
     *var = 16384;
-  } else if (strcmp(var_name, "error_line") == 0) {
+  }
+  else if (strcmp(var_name, "error_line") == 0)
+  {
     *var = 79;
-  } else if (strcmp(var_name, "half_error_line") == 0) {
+  }
+  else if (strcmp(var_name, "half_error_line") == 0)
+  {
     *var = 50;
-  } else if (strcmp(var_name, "max_print_line") == 0) {
+  }
+  else if (strcmp(var_name, "max_print_line") == 0)
+  {
     *var = 79;
-  } else if (strcmp(var_name, "hash_extra") == 0) {
+  }
+  else if (strcmp(var_name, "hash_extra") == 0)
+  {
     *var = 600000;
   }
 }
 
-string concat3(const_string s1, const_string s2, const_string s3) {
+string concat3(const_string s1, const_string s2, const_string s3)
+{
   int s2l = s2 ? strlen(s2) : 0;
   int s3l = s3 ? strlen(s3) : 0;
   string answer = (string)xmalloc(strlen(s1) + s2l + s3l + 1);
@@ -69,7 +114,8 @@ string concat3(const_string s1, const_string s2, const_string s3) {
   return answer;
 }
 
-integer zround(double r) {
+integer zround(double r)
+{
   integer i;
   if (r > 2147483647.0)
     i = 2147483647;
@@ -83,7 +129,8 @@ integer zround(double r) {
   return i;
 }
 
-const_string xbasename(const_string name) {
+const_string xbasename(const_string name)
+{
 #define IS_DEVICE_SEP(ch) ((ch) == ':')
 #define NAME_BEGINS_WITH_DEVICE(name) (*(name) && IS_DEVICE_SEP((name)[1]))
   const_string base = name;
@@ -91,7 +138,8 @@ const_string xbasename(const_string name) {
   if (NAME_BEGINS_WITH_DEVICE(name))
     base += 2;
 
-  for (p = base; *p; p++) {
+  for (p = base; *p; p++)
+  {
     if (IS_DIR_SEP(*p))
       base = p + 1;
   }
@@ -99,12 +147,14 @@ const_string xbasename(const_string name) {
   return base;
 }
 
-boolean dir_p(string fn) {
+boolean dir_p(string fn)
+{
   struct stat stats;
   return stat(fn, &stats) == 0 && S_ISDIR(stats.st_mode);
 }
 
-boolean kpse_absolute_p(const_string filename, boolean relative_ok) {
+boolean kpse_absolute_p(const_string filename, boolean relative_ok)
+{
   boolean absolute;
   boolean explicit_relative;
 
@@ -126,18 +176,22 @@ void kpse_set_program_name(const_string argv0, const_string progname) {}
 
 void kpse_reset_program_name(const_string progname) {}
 
-void xfseek(FILE *fp, long offset, int wherefrom, const_string filename) {
+void xfseek(FILE *fp, long offset, int wherefrom, const_string filename)
+{
   int ret = fseek(fp, offset, wherefrom);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     fprintf(stderr, "File Seek Failed %s", filename);
     abort();
   }
 }
 
-long xftell(FILE *f, const_string filename) {
+long xftell(FILE *f, const_string filename)
+{
   long where = ftell(f);
 
-  if (where < 0) {
+  if (where < 0)
+  {
     fprintf(stderr, "File Tell Failed %s", filename);
     abort();
   }
@@ -145,10 +199,12 @@ long xftell(FILE *f, const_string filename) {
   return where;
 }
 
-long xftello(FILE *f, const_string filename) {
+long xftello(FILE *f, const_string filename)
+{
   long where = ftello(f);
 
-  if (where < 0) {
+  if (where < 0)
+  {
     fprintf(stderr, "File Tello Failed %s", filename);
     abort();
   }
@@ -156,21 +212,25 @@ long xftello(FILE *f, const_string filename) {
   return where;
 }
 
-void xfseeko(FILE *f, off_t offset, int wherefrom, const_string filename) {
-  if (fseeko(f, offset, wherefrom) != 0) {
+void xfseeko(FILE *f, off_t offset, int wherefrom, const_string filename)
+{
+  if (fseeko(f, offset, wherefrom) != 0)
+  {
     fprintf(stderr, "File fseeko Failed (%s %d %d)", filename, (int)(offset),
             wherefrom);
     abort();
   }
 }
 
-FILE *xfopen(const_string filename, const_string mode) {
+FILE *xfopen(const_string filename, const_string mode)
+{
   FILE *f;
 
   // assert(filename && mode);
 
   f = fopen(filename, mode);
-  if (f == NULL) {
+  if (f == NULL)
+  {
     fprintf(stderr, "File Open Failed (%s)\n", filename);
     abort();
   }
@@ -178,24 +238,26 @@ FILE *xfopen(const_string filename, const_string mode) {
   return f;
 }
 
-int xfclose(FILE *stream, const_string filename) {
+int xfclose(FILE *stream, const_string filename)
+{
   int ret = fclose(stream);
-  if (ret != 0) {
+  if (ret != 0)
+  {
     fprintf(stderr, "File Close Failed %s", filename);
     abort();
   }
   return 0;
 }
 
+extern char *kpse_find_file_js(const char *name, kpse_file_format_type format,
+                               boolean must_exist);
 
-
-extern char* kpse_find_file_js(const char* name, kpse_file_format_type format,
-                     boolean must_exist);
-
-static void fix_extension(char *local_name, int format) {
+static void fix_extension(char *local_name, int format)
+{
 #define SUFFIX(suf) strcat(local_name, suf);
 
-  switch (format) {
+  switch (format)
+  {
   case kpse_gf_format:
     SUFFIX(".gf");
     break;
@@ -335,30 +397,36 @@ static void fix_extension(char *local_name, int format) {
 }
 
 #define MAX_PATH_LEN 256
-char* kpse_find_file(const char* name, kpse_file_format_type format,
-                     boolean must_exist) {
-  if (name == NULL) {
+char *kpse_find_file(const char *name, kpse_file_format_type format,
+                     boolean must_exist)
+{
+  if (name == NULL)
+  {
     return NULL;
   }
 
-  if (strlen(name) > MAX_PATH_LEN) {
+  if (strlen(name) > MAX_PATH_LEN)
+  {
     return NULL;
   }
 
-  char* local_name = xmalloc(MAX_PATH_LEN + 32);
+  char *local_name = xmalloc(MAX_PATH_LEN + 32);
   strcpy(local_name, name);
-  
+
   // Search local directory
-  if (access(local_name, F_OK) != -1) {
+  if (access(local_name, F_OK) != -1)
+  {
     return local_name;
   }
 
   // Append extension and search again
   const char *basePath = basename(local_name);
-  if (strstr(basePath, ".") == NULL) {
+  if (strstr(basePath, ".") == NULL)
+  {
     strcpy(local_name, name); // Basename may modify the argument, recopy
     fix_extension(local_name, format);
-    if (access(local_name, F_OK) != -1) {
+    if (access(local_name, F_OK) != -1)
+    {
       return local_name;
     }
   }
@@ -367,6 +435,7 @@ char* kpse_find_file(const char* name, kpse_file_format_type format,
   free(local_name);
 
   // Head to network search
-  return kpse_find_file_js(name, format, must_exist);
-
+  const char *network_name = kpse_find_file_js(name, format, must_exist);
+  printf("filename: %s", network_name);
+  return network_name;
 }

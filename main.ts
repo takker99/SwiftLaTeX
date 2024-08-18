@@ -1,6 +1,6 @@
 /// <reference lib="deno.ns"/>
 // @deno-types=./xetex.d.ts
-import createModule from "./swiftlatexxetex.js";
+import createModule from "./build/debug/xetex-wasm.mjs";
 const { compileLaTeX, setMainfile, writeFile } = await createModule();
 
 writeFile("main.tex", await Deno.readTextFile("test.tex"));

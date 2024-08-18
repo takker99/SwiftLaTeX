@@ -1,0 +1,106 @@
+{
+  "configurePresets": [
+    {
+      "errors": {
+        "dev": true
+      },
+      "generator": "Ninja",
+      "hidden": true,
+      "name": "base",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "warnings": {
+        "dev": true,
+        "unusedCli": true
+      }
+    },
+    {
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "name": "release"
+    },
+    {
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "name": "debug"
+    },
+    {
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": {
+          "type": "FILEPATH",
+          "value": "$env{EMSDK_DIR}/upstream/bin/clang"
+        },
+        "CMAKE_CXX_COMPILER": {
+          "type": "FILEPATH",
+          "value": "$env{EMSDK_DIR}/upstream/bin/clang++"
+        }
+      },
+      "hidden": true,
+      "inherits": [
+        "base"
+      ],
+      "name": "binary"
+    },
+    {
+      "inherits": [
+        "binary",
+        "release"
+      ],
+      "name": "binary-release"
+    },
+    {
+      "inherits": [
+        "binary",
+        "debug"
+      ],
+      "name": "binary-debug"
+    },
+    {
+      "cacheVariables": {
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{EMSDK_DIR}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+        "VCPKG_TARGET_TRIPLET": "wasm32-emscripten"
+      },
+      "inherits": [
+        "base"
+      ],
+      "hidden": true,
+      "name": "wasm"
+    },
+    {
+      "inherits": [
+        "wasm",
+        "debug"
+      ],
+      "name": "wasm-debug"
+    },
+    {
+      "inherits": [
+        "wasm",
+        "release"
+      ],
+      "name": "wasm-release"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "wasm-release",
+      "description": "",
+      "displayName": "",
+      "configurePreset": "wasm-release",
+      "verbose": true,
+      "cleanFirst": true
+    },
+    {
+      "name": "wasm-debug",
+      "description": "",
+      "displayName": "",
+      "configurePreset": "wasm-debug",
+      "verbose": true,
+      "cleanFirst": true
+    }
+  ],
+  "version": 8
+}

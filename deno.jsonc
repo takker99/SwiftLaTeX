@@ -3,8 +3,7 @@
     "check": "deno check --remote main.ts pre.js",
     "fix": "deno fmt && deno lint --fix",
     "run": "deno run --allow-read --allow-net main.ts",
-    "rm": "rm swiftlatexxetex.*",
-    "clean": "deno task rm && make clean"
+    "clean": "rm -rf build"
   },
   "lint": {
     "exclude": [

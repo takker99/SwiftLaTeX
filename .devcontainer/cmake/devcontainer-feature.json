@@ -1,0 +1,9 @@
+{
+  "name": "Cmake",
+  "id": "cmake",
+  "version": "0.1.0",
+  "description": "Install the latest version of CMake",
+  "installsAfter": [
+    "ghcr.io/devcontainers/features/common-utils"
+  ]
+}

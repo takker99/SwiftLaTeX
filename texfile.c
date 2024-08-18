@@ -11,13 +11,15 @@ void recorder_change_filename(string new_name) {}
 
 void readtcxfile(void) {}
 
-boolean open_input(FILE **f_ptr, int filefmt, const_string fopen_mode) {
+boolean open_input(FILE **f_ptr, int filefmt, const_string fopen_mode)
+{
   string fname = NULL;
 
   // printf("open input %s\n", nameoffile + 1);
 
   *f_ptr = NULL;
-  if (fullnameoffile) {
+  if (fullnameoffile)
+  {
     free(fullnameoffile);
   }
   fullnameoffile = NULL;
@@ -26,7 +28,8 @@ boolean open_input(FILE **f_ptr, int filefmt, const_string fopen_mode) {
      written to the output directory, and we have to be able to read
      them from there.  We only look for the name as-is.  */
 
-  if (output_directory && !kpse_absolute_p(nameoffile + 1, false)) {
+  if (output_directory && !kpse_absolute_p(nameoffile + 1, false))
+  {
 
     fname = concat3(output_directory, "/", nameoffile + 1);
     *f_ptr = fopen(fname, fopen_mode);
@@ -34,37 +37,46 @@ boolean open_input(FILE **f_ptr, int filefmt, const_string fopen_mode) {
     /*
         if fname is a directory, discard it.
     */
-    if (*f_ptr && dir_p(fname)) {
+    if (*f_ptr && dir_p(fname))
+    {
       fclose(*f_ptr);
       *f_ptr = NULL;
     }
 
-    if (*f_ptr) {
+    if (*f_ptr)
+    {
       free(nameoffile);
       namelength = strlen(fname);
       nameoffile = xmalloc(namelength + 2);
       strcpy(nameoffile + 1, fname);
       fullnameoffile = fname;
-    } else {
+    }
+    else
+    {
       free(fname);
     }
   }
 
   /* No file means do the normal search. */
-  if (*f_ptr == NULL) {
+  if (*f_ptr == NULL)
+  {
     /* A negative FILEFMT means don't use a path.  */
-    if (filefmt < 0) {
+    if (filefmt < 0)
+    {
       /* no_file_path, for BibTeX .aux files and MetaPost things.  */
       *f_ptr = fopen(nameoffile + 1, fopen_mode);
       /* FIXME... fullnameoffile = xstrdup(nameoffile + 1); */
-    } else {
+    }
+    else
+    {
 
       boolean must_exist;
       must_exist = (filefmt != kpse_tex_format || texinputtype) &&
                    (filefmt != kpse_vf_format);
       fname = kpse_find_file(nameoffile + 1, (kpse_file_format_type)filefmt,
                              must_exist);
-      if (fname) {
+      if (fname)
+      {
         fullnameoffile = xstrdup(fname);
         /* If we found the file in the current directory, don't leave
            the `./' at the beginning of `nameoffile', since it looks
@@ -73,9 +85,11 @@ boolean open_input(FILE **f_ptr, int filefmt, const_string fopen_mode) {
            opened, then keep it -- the user specified it, so we
            shouldn't remove it.  */
         if (fname[0] == '.' && IS_DIR_SEP(fname[1]) &&
-            (nameoffile[1] != '.' || !IS_DIR_SEP(nameoffile[2]))) {
+            (nameoffile[1] != '.' || !IS_DIR_SEP(nameoffile[2])))
+        {
           unsigned i = 0;
-          while (fname[i + 2] != 0) {
+          while (fname[i + 2] != 0)
+          {
             fname[i] = fname[i + 2];
             i++;
           }
@@ -93,12 +107,16 @@ boolean open_input(FILE **f_ptr, int filefmt, const_string fopen_mode) {
     }
   }
 
-  if (*f_ptr) {
+  if (*f_ptr)
+  {
     recorder_record_input(nameoffile + 1);
 
-    if (filefmt == kpse_tfm_format) {
+    if (filefmt == kpse_tfm_format)
+    {
       tfmtemp = getc(*f_ptr);
-    } else if (filefmt == kpse_ofm_format) {
+    }
+    else if (filefmt == kpse_ofm_format)
+    {
       tfmtemp = getc(*f_ptr);
     }
   }
@@ -106,14 +124,18 @@ boolean open_input(FILE **f_ptr, int filefmt, const_string fopen_mode) {
   return *f_ptr != NULL;
 }
 
-boolean open_output(FILE **f_ptr, const_string fopen_mode) {
+boolean open_output(FILE **f_ptr, const_string fopen_mode)
+{
   string fname;
   boolean absolute = kpse_absolute_p(nameoffile + 1, false);
 
   /* If we have an explicit output directory, use it. */
-  if (output_directory && !absolute) {
+  if (output_directory && !absolute)
+  {
     fname = concat3(output_directory, "/", nameoffile + 1);
-  } else {
+  }
+  else
+  {
     fname = nameoffile + 1;
   }
 
@@ -121,8 +143,10 @@ boolean open_output(FILE **f_ptr, const_string fopen_mode) {
   *f_ptr = fopen(fname, fopen_mode);
 
   /* If this succeeded, change nameoffile accordingly.  */
-  if (*f_ptr) {
-    if ((char *)fname != (char *)nameoffile + 1) {
+  if (*f_ptr)
+  {
+    if ((char *)fname != (char *)nameoffile + 1)
+    {
       free(nameoffile);
       namelength = strlen(fname);
       nameoffile = xmalloc(namelength + 2);
@@ -130,29 +154,35 @@ boolean open_output(FILE **f_ptr, const_string fopen_mode) {
     }
     recorder_record_output(fname);
   }
-  if ((char *)fname != (char *)nameoffile + 1) {
+  if ((char *)fname != (char *)nameoffile + 1)
+  {
     free(fname);
   }
   return *f_ptr != NULL;
 }
 
-void do_undump(char *p, int item_size, int nitems, FILE *in_file) {
-  if (fread(p, item_size, nitems, in_file) != (size_t)nitems) {
+void do_undump(char *p, int item_size, int nitems, FILE *in_file)
+{
+  if (fread(p, item_size, nitems, in_file) != (size_t)nitems)
+  {
     fprintf(stderr, "Could not undump %d %d-byte item(s) from %s", nitems,
             item_size, nameoffile + 1);
     abort();
   }
 }
 
-void do_dump(char *p, int item_size, int nitems, FILE *out_file) {
-  if (fwrite(p, item_size, nitems, out_file) != nitems) {
+void do_dump(char *p, int item_size, int nitems, FILE *out_file)
+{
+  if (fwrite(p, item_size, nitems, out_file) != nitems)
+  {
     fprintf(stderr, "! Could not write %d %d-byte item(s) to %s.\n", nitems,
             item_size, nameoffile + 1);
     abort();
   }
 }
 
-void close_file(FILE *f) {
+void close_file(FILE *f)
+{
   if (!f)
     return;
   xfclose(f, "closefile");
