@@ -2,7 +2,13 @@
   "version": "3",
   "packages": {
     "specifiers": {
+      "jsr:@std/media-types": "jsr:@std/media-types@1.0.2",
       "npm:@types/emscripten@1": "npm:@types/emscripten@1.39.13"
+    },
+    "jsr": {
+      "@std/media-types@1.0.2": {
+        "integrity": "abb78dc8f7d88141cba8c4d60fc1e8b421e5c7b0d7c84f2f708bc666cad46784"
+      }
     },
     "npm": {
       "@types/emscripten@1.39.13": {

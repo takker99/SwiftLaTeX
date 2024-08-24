@@ -3,20 +3,17 @@
 
 const TEXCACHEROOT = "/tex";
 const WORKROOT = "/work";
+let memlog = "";
 /** @type{Uint8Array|undefined} */
 let initmem;
 let mainfile = "main.tex";
 let texlive_endpoint = "https://texlive2.swiftlatex.com/";
-/** @type {(msg: string) => void} */
-let logger = () => {};
-
-Module.onProgress = (callback) => logger = callback;
 Module.print = (a) => {
-  logger(a);
+  memlog += a + "\n";
 };
 
 Module.printErr = (a) => {
-  logger(a);
+  memlog += a + "\n";
   console.log(a);
 };
 
@@ -60,7 +57,7 @@ const closeFSStreams = () => {
 };
 
 const prepareExecutionContext = () => {
-  // clear messages
+  memlog = "";
   restoreHeapMemory();
   closeFSStreams();
   FS.chdir(WORKROOT);
@@ -105,19 +102,20 @@ Module.cleanDir = (dir) => {
 };
 
 Module.onAbort = () => {
-  logger("Engine crashed");
+  memlog += "Engine crashed";
   return;
 };
 
-Module.compileLaTeX = () => {
+Module.compileLaTeX = async () => {
   prepareExecutionContext();
   ccall("setMainEntry", "number", ["string"], [mainfile]);
 
-  let status = _compileLaTeX();
+  let status = await _compileLaTeX();
   if (status === 0) {
     let pdfArrayBuffer = null;
-    _compileBibtex();
-    const pdfurl = `${WORKROOT}/${mainfile.slice(0, mainfile.length - 4)}.xdv`;
+    await _compileBibtex();
+    const pdfurl = WORKROOT + "/" +
+      mainfile.substr(0, mainfile.length - 4) + ".xdv";
     try {
       pdfArrayBuffer = FS.readFile(pdfurl, {
         encoding: "binary",
@@ -128,12 +126,14 @@ Module.compileLaTeX = () => {
       return {
         result: "failed",
         status,
+        log: memlog,
         cmd: "compile",
       };
     }
     return {
       result: "ok",
       status,
+      log: memlog,
       pdf: pdfArrayBuffer.buffer,
       cmd: "compile",
     };
@@ -142,6 +142,7 @@ Module.compileLaTeX = () => {
   return {
     result: "failed",
     status,
+    log: memlog,
     cmd: "compile",
   };
 };
@@ -161,12 +162,14 @@ Module.compileFormat = () => {
       return {
         result: "failed",
         status,
+        log: memlog,
         cmd: "compile",
       };
     }
     return {
       result: "ok",
       status,
+      log: memlog,
       pdf: pdfArrayBuffer.buffer,
       cmd: "compile",
     };
@@ -175,6 +178,7 @@ Module.compileFormat = () => {
   return {
     result: "failed",
     status,
+    log: memlog,
     cmd: "compile",
   };
 };
@@ -234,10 +238,10 @@ const texlive200_cache = new Map();
  * @param {number} nameptr
  * @param {string} format
  * @param {unknown} _mustexist
- * @return {number}
+ * @return {Promise<number>}
  */
 // deno-lint-ignore no-unused-vars
-const kpse_find_file_impl = (nameptr, format, _mustexist) => {
+const kpse_find_file_impl = async (nameptr, format, _mustexist) => {
   const reqname = UTF8ToString(nameptr);
 
   if (reqname.includes("/")) return 0;
@@ -252,32 +256,28 @@ const kpse_find_file_impl = (nameptr, format, _mustexist) => {
   }
 
   const remote_url = `${texlive_endpoint}xetex/${cacheKey}`;
-  const xhr = new XMLHttpRequest();
-  xhr.open("GET", remote_url, false);
-  xhr.timeout = 150000;
-  xhr.responseType = "arraybuffer";
+  console.log(`Start downloading texlive file ${remote_url}`);
   try {
-    xhr.send();
+    const res = await fetch(remote_url);
+    if (res.ok) {
+      const arraybuffer = await res.arrayBuffer();
+      console.log(`TexLive Download Success ${remote_url}`);
+      const fileid = res.headers.get("fileid") ?? "";
+      const savepath = `${TEXCACHEROOT}/${fileid}`;
+      FS.writeFile(savepath, new Uint8Array(arraybuffer));
+      console.log(`Wrote data of ${remote_url}`);
+      texlive200_cache.set(cacheKey, savepath);
+      const charPtr = _allocate(intArrayFromString(savepath));
+      console.log(`Allocated filename at ${charPtr}`);
+      return charPtr;
+    }
+    console.log(`TexLive File not exists ${remote_url}`);
+    texlive404_cache.add(cacheKey);
+    return 0;
   } catch (_) {
-    logger(`Failed to download ${remote_url}`);
+    console.log(`TexLive Download Failed ${remote_url}`);
     return 0;
   }
-
-  if (xhr.status === 200) {
-    logger(`Download ${remote_url}`);
-    /** @type {ArrayBuffer} */
-    const arraybuffer = xhr.response;
-    const fileid = xhr.getResponseHeader("fileid") ?? "";
-    const savepath = `${TEXCACHEROOT}/${fileid}`;
-    FS.writeFile(savepath, new Uint8Array(arraybuffer));
-    texlive200_cache.set(cacheKey, savepath);
-    const charPtr = _allocate(intArrayFromString(savepath));
-    return charPtr;
-  } else if (xhr.status === 301) {
-    logger(`File not exists ${remote_url}`);
-    texlive404_cache.add(cacheKey);
-  }
-  return 0;
 };
 
 /** @type{Map<string,string>} */
@@ -289,7 +289,7 @@ const font404_cache = new Set();
  * @param {number} varStringPtr
  */
 // deno-lint-ignore no-unused-vars
-const fontconfig_search_font_impl = (fontnamePtr, varStringPtr) => {
+const fontconfig_search_font_impl = async (fontnamePtr, varStringPtr) => {
   const fontname = UTF8ToString(fontnamePtr);
   const variant = (UTF8ToString(varStringPtr) || "OT").replace(/\//g, "_");
 
@@ -302,30 +302,22 @@ const fontconfig_search_font_impl = (fontnamePtr, varStringPtr) => {
     if (savepath) return _allocate(intArrayFromString(savepath));
   }
   const remote_url = `${texlive_endpoint}fontconfig/${cacheKey}`;
-  const xhr = new XMLHttpRequest();
-  xhr.open("GET", remote_url, false);
-  xhr.timeout = 150000;
-  xhr.responseType = "arraybuffer";
-  logger(`Start downloading font file ${remote_url}`);
+  console.log(`Start downloading font file ${remote_url}`);
   try {
-    xhr.send();
+    const res = await fetch(remote_url);
+    if (res.ok) {
+      const arraybuffer = await res.arrayBuffer();
+      const fileid = res.headers.get("fileid") ?? "";
+      const savepath = `${TEXCACHEROOT}/${fileid}`;
+      FS.writeFile(savepath, new Uint8Array(arraybuffer));
+      font200_cache.set(cacheKey, savepath);
+      return _allocate(intArrayFromString(savepath));
+    }
+    console.log(`Font File not exists ${remote_url}`);
+    font404_cache.add(cacheKey);
+    return 0;
   } catch (_) {
-    logger(`Font Download Failed ${remote_url}`);
+    console.log(`Font Download Failed ${remote_url}`);
     return 0;
   }
-
-  if (xhr.status === 200) {
-    /** @type {ArrayBuffer} */
-    const arraybuffer = xhr.response;
-    const fontID = xhr.getResponseHeader("fontid") ?? "";
-    const savepath = `${TEXCACHEROOT}/${fontID}`;
-    FS.writeFile(savepath, new Uint8Array(arraybuffer));
-    font200_cache.set(cacheKey, savepath);
-    return _allocate(intArrayFromString(savepath));
-  }
-  if (xhr.status === 301 || xhr.status === 404) {
-    logger(`Font File not exists ${remote_url}`);
-    font404_cache.add(cacheKey);
-  }
-  return 0;
 };

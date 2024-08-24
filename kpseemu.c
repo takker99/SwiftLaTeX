@@ -435,7 +435,8 @@ char *kpse_find_file(const char *name, kpse_file_format_type format,
   free(local_name);
 
   // Head to network search
-  const char *network_name = kpse_find_file_js(name, format, must_exist);
-  printf("filename: %s", network_name);
-  return network_name;
+  // const char *network_name = kpse_find_file_js(name, format, must_exist);
+  // printf("filename: %s\n", network_name);
+  // return network_name;
+  return kpse_find_file_js(name, format, must_exist);
 }

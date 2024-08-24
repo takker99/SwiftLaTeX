@@ -560,7 +560,8 @@ declare const ALLOC_NONE: number;
 
 interface EmscriptenModule {
   cleanDir: (dir: string) => void;
-  compileLaTeX: () => Promise<CompileEvent>;
+  // compileLaTeX: () => Promise<CompileEvent>;
+  compileLaTeX: () => CompileEvent;
   compileFormat: () => CompileEvent;
   mkdir: (dirname: string) => MkdirEvent;
   writeFile: (
@@ -569,6 +570,7 @@ interface EmscriptenModule {
   ) => WriteFileEvent;
   setTexliveEndpoint: (endpoint: string) => void;
   setMainfile: (filename: string) => void;
+  onProgress: (logger: (msg: string) => void) => void;
 }
 
 declare const Module: EmscriptenModule;
@@ -590,14 +592,12 @@ type CompileEvent = FailedCompileEvent | SuccessCompileEvent;
 interface FailedCompileEvent {
   result: "failed";
   status: number;
-  log: string;
   cmd: "compile";
 }
 
 interface SuccessCompileEvent {
   result: "ok";
   status: number;
-  log: string;
   pdf: ArrayBuffer;
   cmd: "compile";
 }

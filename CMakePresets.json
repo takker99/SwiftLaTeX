@@ -90,8 +90,7 @@
       "description": "",
       "displayName": "",
       "configurePreset": "wasm-release",
-      "verbose": true,
-      "cleanFirst": true
+      "verbose": true
     },
     {
       "name": "wasm-debug",

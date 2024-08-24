@@ -26,23 +26,25 @@ if(EMSCRIPTEN)
       --disable-nls
       --js-library=${CMAKE_CURRENT_SOURCE_DIR}/library.js
       --pre-js=${CMAKE_CURRENT_SOURCE_DIR}/pre.js
-      # -sSTANDALONE_WASM=1
-      # -sPURE_WASI=1
-      # -sWASM_BIGINT=1
-      # --no-entry
+      # -sSTANDALONE_WASM=1 -sPURE_WASI=1 -sWASM_BIGINT=1
+      --no-entry
       # -sFILESYSTEM=0
       -sAUTO_JS_LIBRARIES=0
       -sAUTO_NATIVE_LIBRARIES=0
       -sEXIT_RUNTIME=0
-      -sASYNCIFY
-      -sASYNCIFY_IMPORTS=kpse_find_file_js,fontconfig_search_font_js
+      -Wno-experimental
+      # -sJSPI=1
+      # -sJSPI_EXPORTS=compileBibtex,compileLaTeX,compileFormat
+      # -sJSPI_IMPORTS=kpse_find_file_js,fontconfig_search_font_js
+      # -sASYNCIFY
+      # -sASYNCIFY_IMPORTS=kpse_find_file_js,fontconfig_search_font_js
       -sENVIRONMENT=web
       -sMODULARIZE=1
       -sEXPORT_ES6=1
       -sUSE_ES6_IMPORT_META=1
-      -sINCOMING_MODULE_JS_API=preRun,postRun,onAbort,print,printErr,noExitRuntime
+      -sINCOMING_MODULE_JS_API=preRun,postRun,onAbort,print,printErr,noExitRuntime,onProgress
       -sTEXTDECODER=2
-      -sEXPORTED_FUNCTIONS=_compileBibtex,_compileLaTeX,_compileFormat,_setMainEntry,_malloc,_main
+      -sEXPORTED_FUNCTIONS=_compileBibtex,_compileLaTeX,_compileFormat,_setMainEntry,_malloc
       -sEXPORTED_RUNTIME_METHODS=ccall
       -sALLOW_MEMORY_GROWTH=1
       -sPOLYFILL=0)
@@ -53,8 +55,7 @@ if(EMSCRIPTEN)
       APPEND
       EM_LINK_FLAGS
       -sSAFE_HEAP=1
-      # -sSAFE_HEAP_LOG=1
-      -sLIBRARY_DEBUG=1
+      # -sSAFE_HEAP_LOG=1 -sLIBRARY_DEBUG=1
       -sEXCEPTION_DEBUG=1
       -sMALLOC=emmalloc-memvalidate-verbose
       -sASSERTIONS=2
@@ -83,10 +84,11 @@ if(EMSCRIPTEN)
     xetexdir/XeTeXFontMgr_FC.cpp
     xetexdir/hz.cpp
     xetexdir/pdfimage.cpp)
-    target_link_libraries(xetex PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/xpdf/xpdf.a
-    ${CMAKE_CURRENT_SOURCE_DIR}/graphite2/libgraphite2.a
-    ${CMAKE_CURRENT_SOURCE_DIR}/harfbuzz/libharfbuzz.a)
+  target_link_libraries(
+    xetex
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/xpdf/xpdf.a
+            ${CMAKE_CURRENT_SOURCE_DIR}/graphite2/libgraphite2.a
+            ${CMAKE_CURRENT_SOURCE_DIR}/harfbuzz/libharfbuzz.a)
   target_include_directories(
     xetex
     PRIVATE ./

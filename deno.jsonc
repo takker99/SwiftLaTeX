@@ -2,12 +2,14 @@
   "tasks": {
     "check": "deno check --remote main.ts pre.js",
     "fix": "deno fmt && deno lint --fix",
-    "run": "deno run --allow-read --allow-net main.ts",
-    "clean": "rm -rf build"
+    "run": "deno run --v8-flags=--experimental-wasm-jspi --allow-read --allow-net main.ts",
+    "clean": "rm -rf build",
+    "serve": "deno run --allow-net --allow-read jsr:@std/http/file-server --verbose"
   },
   "lint": {
     "exclude": [
-      "./swiftlatexxetex.js",
+      "./build/release/xetex-wasm.mjs",
+      "./build/debug/xetex-wasm.mjs",
       "./XeTeXEngine.tsx"
     ]
   }

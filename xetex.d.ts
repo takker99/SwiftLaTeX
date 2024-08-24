@@ -16,14 +16,12 @@ type CompileEvent = FailedCompileEvent | SuccessCompileEvent;
 interface FailedCompileEvent {
   result: "failed";
   status: number;
-  log: string;
   cmd: "compile";
 }
 
 interface SuccessCompileEvent {
   result: "ok";
   status: number;
-  log: string;
   pdf: ArrayBuffer;
   cmd: "compile";
 }
